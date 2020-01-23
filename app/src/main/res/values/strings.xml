@@ -1,4 +1,4 @@
 <resources>
     <string name="app_name">Dropbox Test</string>
-    <string name="app_key">PUSH APP KEY HERE Замените эту стоку своим app key</string>
+    <string name="app_key"></string>
 </resources>

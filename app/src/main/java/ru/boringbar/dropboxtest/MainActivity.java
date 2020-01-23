@@ -9,7 +9,6 @@ import android.view.View;
 
 import java.util.ArrayList;
 
-import ru.boringbar.UsersRecyclerAdepter;
 import ru.boringbar.dropboxtest.easy_drobox.DropboxHelper;
 import ru.boringbar.dropboxtest.easy_drobox.DropboxUser;
 
@@ -30,7 +29,7 @@ public class MainActivity extends AppCompatActivity {
     /**
      * Адаптер для отображения добавленных пользователей
      */
-    UsersRecyclerAdepter usersAdapter;
+    UsersRecyclerAdapter usersAdapter;
 
     /**
      * Для хранения инормации о добавленных пользователях
@@ -49,7 +48,7 @@ public class MainActivity extends AppCompatActivity {
 
         //Инициализация View
         {
-            usersAdapter = new UsersRecyclerAdepter(this, users);
+            usersAdapter = new UsersRecyclerAdapter(this, users);
             ((RecyclerView)findViewById(R.id.main_users_recycler)).setAdapter(usersAdapter);
 
             findViewById(R.id.main_add_new_user).setOnClickListener(this::OnNewUserAddClick);
