@@ -1,4 +1,4 @@
-package ru.boringbar.dropboxtest;
+package ru.boringbar.dropboxtest.adapters;
 
 import android.content.Context;
 import android.graphics.BitmapFactory;
@@ -14,16 +14,19 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import java.util.List;
 
+import ru.boringbar.dropboxtest.R;
 import ru.boringbar.dropboxtest.easy_drobox.DropboxUser;
 
 public class UsersRecyclerAdapter extends RecyclerView.Adapter<UsersRecyclerAdapter.ItemHolder> {
 
     LayoutInflater inflater;
     List<DropboxUser> users;
+    ClickListener listener;
 
-    public UsersRecyclerAdapter(Context context, List<DropboxUser> users){
+    public UsersRecyclerAdapter(Context context, List<DropboxUser> users, ClickListener listener){
         inflater = LayoutInflater.from(context);
         this.users = users;
+        this.listener = listener;
     }
 
     @NonNull
@@ -43,6 +46,12 @@ public class UsersRecyclerAdapter extends RecyclerView.Adapter<UsersRecyclerAdap
 
         holder.userName.setText(user.name);
         holder.userMail.setText(user.mail);
+        holder.selectUser.setOnClickListener((x)->{
+            listener.OnOpenFolderClick(user);
+        });
+        holder.removeUser.setOnClickListener((x)->{
+            listener.OnRemoveUserClick(user);
+        });
     }
 
     @Override
@@ -66,4 +75,10 @@ public class UsersRecyclerAdapter extends RecyclerView.Adapter<UsersRecyclerAdap
             removeUser = itemView.findViewById(R.id.item_dropbox_user_remove_btn);
         }
     }
+
+    public interface ClickListener{
+        void OnOpenFolderClick(DropboxUser user);
+        void OnRemoveUserClick(DropboxUser user);
+    }
+
 }

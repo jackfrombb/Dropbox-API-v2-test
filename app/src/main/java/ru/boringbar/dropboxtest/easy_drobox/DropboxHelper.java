@@ -4,9 +4,12 @@ import android.content.Context;
 import android.content.pm.PackageManager;
 import android.os.AsyncTask;
 
+import com.dropbox.core.DbxException;
 import com.dropbox.core.DbxRequestConfig;
 import com.dropbox.core.android.Auth;
 import com.dropbox.core.v2.DbxClientV2;
+import com.dropbox.core.v2.files.ListFolderResult;
+import com.dropbox.core.v2.files.Metadata;
 import com.dropbox.core.v2.users.FullAccount;
 
 import java.io.FileInputStream;
@@ -14,15 +17,17 @@ import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.Serializable;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.List;
 
 import ru.boringbar.dropboxtest.R;
 
 /**
  * Помощник при использовании API Dropbox
  */
-public class DropboxHelper {
+public class DropboxHelper implements Serializable {
 
 //Теги===================================================================================================
 
@@ -87,9 +92,9 @@ public class DropboxHelper {
 //Публичные методы=======================================================================================
 
     /**
-     * Инициализация доступа, запускает Авторизацию, если нет токена
+     * Проверка на наличие нового токена, если найден то добавляем токена
      */
-    public  boolean  CheckAuth(UserInfoLoadListener callback) {
+    public  boolean  CheckAuth(ReadUserInfoListener callback) {
 
         //Если доступен токен и пользователя с таким токеном ещё нет, то добавляем
         if (Auth.getOAuth2Token() != null) {
@@ -97,7 +102,7 @@ public class DropboxHelper {
             String token = Auth.getOAuth2Token();
             DbxClientV2 clientV2 = new DbxClientV2(requestConfig, token);
 
-            ReadUserInfoAsync readUserInfoAsync = new ReadUserInfoAsync(clientV2, new UserInfoLoadListener() {
+            ReadUserInfoAsync readUserInfoAsync = new ReadUserInfoAsync(clientV2, new ReadUserInfoListener() {
                 @Override
                 public void OnLoadOver(DropboxUser user) {
                     user.token = token;
@@ -111,6 +116,9 @@ public class DropboxHelper {
         else return false;
     }
 
+    /**
+     * Запустить авторизацию пользователя
+     */
     public void StartAuthActivity(){
         Auth.startOAuth2Authentication(context, app_key);
     }
@@ -135,14 +143,38 @@ public class DropboxHelper {
         saveUsers(context, dropboxUsers);
     }
 
+    /**
+     * Удалить пользователя
+     */
     public void removeUser(DropboxUser user){
         dropboxUsers.remove(user);
         saveUsers(context, dropboxUsers);
     }
 
+    /**
+     * Считать файлы для пользователя
+     */
+    public static ListFolderResult getListFolder(DbxClientV2 client, String folder) throws DbxException {
+
+        ListFolderResult folderResult = client.files().listFolder(folder);
+        while (folderResult.getHasMore()) {
+            folderResult = client.files().listFolderContinue(folderResult.getCursor());
+        }
+
+        return folderResult;
+
+    }
+
+    /**
+     * Считать эллементы из папки пользователя ассинхронно
+     */
+    public void getUserFileAsync(DropboxUser user, String folder, ReadFolderListener callback) {
+        DbxClientV2 clientV2 = new DbxClientV2(requestConfig, user.token);
+        ReadFolderAsync reader = new ReadFolderAsync(clientV2, folder, callback);
+        reader.execute();
+    }
+
     //Приватные методы=======================================================================================
-
-
 
     /**
      * Десериализация токенов
@@ -190,11 +222,11 @@ public class DropboxHelper {
      */
     private static class ReadUserInfoAsync extends AsyncTask<Void, Void, DropboxUser>{
 
-        private UserInfoLoadListener callback;
+        private ReadUserInfoListener callback;
         private DbxClientV2 clientV2;
         private DropboxUser user;
 
-        ReadUserInfoAsync(DbxClientV2 client, UserInfoLoadListener callback){
+        ReadUserInfoAsync(DbxClientV2 client, ReadUserInfoListener callback){
             this.callback = callback;
             this.clientV2 = client;
             this.user = new DropboxUser();
@@ -242,10 +274,59 @@ public class DropboxHelper {
         }
     }
 
-//Вспомогательные интерфейсы=============================================================================
+    /**
+     * Получить эллементы в папках
+     */
+    private static class ReadFolderAsync extends  AsyncTask<Void, Void, ListFolderResult>{
 
-    public interface UserInfoLoadListener{
+        DbxClientV2 client;
+        ReadFolderListener listener;
+        String folder;
+
+        public ReadFolderAsync(DbxClientV2 client, String folder, ReadFolderListener listener){
+            this.client = client;
+            this.listener = listener;
+            this.folder = folder;
+        }
+
+        @Override
+        protected ListFolderResult doInBackground(Void... voids) {
+            try{
+                return DropboxHelper.getListFolder(client, folder);
+            }catch (Exception ex){
+                ex.printStackTrace();
+                return null;
+            }
+        }
+
+        @Override
+        protected void onPostExecute(ListFolderResult metadata) {
+            super.onPostExecute(metadata);
+            listener.OnFolderLoad(metadata);
+        }
+    }
+
+    /**
+     * Вернуть ссылку на настройки
+     */
+    public DbxRequestConfig getRequestConfig() {
+        return requestConfig;
+    }
+
+    //Вспомогательные интерфейсы=============================================================================
+
+    /**
+     * Слушатель получения информации о пользователе
+     */
+    public interface ReadUserInfoListener {
         void OnLoadOver(DropboxUser user);
+    }
+
+    /**
+     * Сдушатель получения содержимого папки
+     */
+    public interface ReadFolderListener{
+        void OnFolderLoad(ListFolderResult metadata);
     }
 
 }
